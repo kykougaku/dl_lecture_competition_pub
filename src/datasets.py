@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from typing import Tuple
 from termcolor import cprint
+from torchvision import transforms
 
 
 class ThingsMEGDataset(torch.utils.data.Dataset):
@@ -12,6 +13,8 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         assert split in ["train", "val", "test"], f"Invalid split: {split}"
         self.split = split
         self.num_classes = 1854
+
+        self.transform = transforms.ToTensor()
         
         self.X = torch.load(os.path.join(data_dir, f"{split}_X.pt"))
         self.subject_idxs = torch.load(os.path.join(data_dir, f"{split}_subject_idxs.pt"))
@@ -25,9 +28,9 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         if hasattr(self, "y"):
-            return self.X[i], self.y[i], self.subject_idxs[i]
+            return self.transform(self.X[i]), self.y[i], self.subject_idxs[i]
         else:
-            return self.X[i], self.subject_idxs[i]
+            return self.transform(self.X[i]), self.subject_idxs[i]
         
     @property
     def num_channels(self) -> int:

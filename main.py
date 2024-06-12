@@ -9,6 +9,10 @@ import wandb
 from termcolor import cprint
 from tqdm import tqdm
 
+from torchvision.transforms import v2
+import timm
+from timm.models import create_model
+
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
 from src.utils import set_seed
@@ -26,12 +30,21 @@ def run(args: DictConfig):
     #    Dataloader
     # ------------------
     loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
+
+    transform = v2.Compose([
+        v2.ToImage(),
+        v2.Resize((224, 224)),
+        v2.ToDtype(torch.float32, scale=True)
+    ])
     
     train_set = ThingsMEGDataset("train", args.data_dir)
+    train_set.transform = transform
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
     val_set = ThingsMEGDataset("val", args.data_dir)
+    val_set.transform = transform
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
     test_set = ThingsMEGDataset("test", args.data_dir)
+    test_set.transform = transform
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
@@ -39,9 +52,13 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
+    """
     model = BasicConvClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
+    """
+    model = create_model("efficientnet_b0", num_classes=train_set.num_classes, in_chans=1, pretrained=True)
+    model.to(args.device)
 
     # ------------------
     #     Optimizer
@@ -64,6 +81,7 @@ def run(args: DictConfig):
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
             X, y = X.to(args.device), y.to(args.device)
+
 
             y_pred = model(X)
             
