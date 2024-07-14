@@ -40,7 +40,7 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = create_model("efficientnet_b0", num_classes=test_set.num_classes, in_chans=1, pretrained=True)
+    model = create_model("coatnext_nano_rw_224", num_classes=test_set.num_classes, in_chans=1, pretrained=True)
     model.to(args.device)
     model.load_state_dict(torch.load(args.model_path, map_location=args.device))
 
