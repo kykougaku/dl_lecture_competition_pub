@@ -8,6 +8,9 @@ from omegaconf import DictConfig
 import wandb
 from termcolor import cprint
 from tqdm import tqdm
+import timm
+from timm.models import create_model
+from torchvision.transforms import v2
 
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
@@ -23,7 +26,13 @@ def run(args: DictConfig):
     # ------------------
     #    Dataloader
     # ------------------    
+    transform = v2.Compose([
+        v2.ToImage(),
+        v2.Resize((224, 224)),
+        v2.ToDtype(torch.float32, scale=True)
+    ])
     test_set = ThingsMEGDataset("test", args.data_dir)
+    test_set.transform = transform
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
@@ -31,9 +40,8 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    model = BasicConvClassifier(
-        test_set.num_classes, test_set.seq_len, test_set.num_channels
-    ).to(args.device)
+    model = create_model("coatnext_nano_rw_224", num_classes=test_set.num_classes, in_chans=1, pretrained=True)
+    model.to(args.device)
     model.load_state_dict(torch.load(args.model_path, map_location=args.device))
 
     # ------------------

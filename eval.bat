@@ -1,0 +1,1 @@
+python .\eval.py model_path="outputs\2024-06-12\23-14-54\model_best.pt"

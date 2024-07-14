@@ -14,9 +14,8 @@ import timm
 from timm.models import create_model
 
 from src.datasets import ThingsMEGDataset
-from src.models import BasicConvClassifier
+from src.models import myclassifier
 from src.utils import set_seed
-
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(args: DictConfig):
@@ -53,7 +52,11 @@ def run(args: DictConfig):
     #       Model
     # ------------------
 
-    model = create_model("efficientnet_b0", num_classes=1854, in_chans=271, pretrained=True)
+    model = myclassifier(in_class=train_set.num_classes, dir="outputs\\2024-06-12\\16-16-47\\model_best.pt") 
+    print(model)
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            print(name)
     model.to(args.device)
 
     # ------------------
@@ -76,10 +79,10 @@ def run(args: DictConfig):
         
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
-            X, y = X.to(args.device), y.to(args.device)
+            X, subject_idxs, y = X.to(args.device), subject_idxs.to(args.device), y.to(args.device)
 
 
-            y_pred = model(X)
+            y_pred = model(X, subject_idxs)
             
             loss = F.cross_entropy(y_pred, y)
             train_loss.append(loss.item())
@@ -93,10 +96,10 @@ def run(args: DictConfig):
 
         model.eval()
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
-            X, y = X.to(args.device), y.to(args.device)
+            X, subject_idxs, y = X.to(args.device), subject_idxs.to(args.device), y.to(args.device)
             
             with torch.no_grad():
-                y_pred = model(X)
+                y_pred = model(X, subject_idxs)
             
             val_loss.append(F.cross_entropy(y_pred, y).item())
             val_acc.append(accuracy(y_pred, y).item())
@@ -120,7 +123,7 @@ def run(args: DictConfig):
     preds = [] 
     model.eval()
     for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
-        preds.append(model(X.to(args.device)).detach().cpu())
+        preds.append(model(X.to(args.device), subject_idxs.to(args.device)).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(logdir, "submission"), preds)
